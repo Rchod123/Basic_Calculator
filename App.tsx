@@ -1,131 +1,187 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
-
-import React from 'react';
-import type {PropsWithChildren} from 'react';
+import React, {useState} from 'react';
+import {FlatList, StyleSheet, Text, View, SafeAreaView} from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
+import ButtonText from './src/components/ButtonText';
+import {CalculatorValues} from './src/constants/calculatorConstants';
 import {
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  useColorScheme,
-  View,
-} from 'react-native';
+  heightPercentageToDP,
+  widthPercentageToDP,
+} from './src/utils/responsive';
 
-import {
-  Colors,
-  DebugInstructions,
-  Header,
-  LearnMoreLinks,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
+const lightTheme = {
+  gradient: ['#f8fafc', '#e2e8f0'],
+  displayBg: 'rgba(255,255,255,0.95)',
+  mainText: '#222',
+  expressionText: '#555',
+  accent: '#ffa07a',
+  buttonBg: 'rgba(240,240,240,0.95)',
+  accentText: '#fff',
+};
 
-type SectionProps = PropsWithChildren<{
-  title: string;
-}>;
+const darkTheme = {
+  gradient: ['#232526', '#414345'],
+  displayBg: 'rgba(30,30,30,0.95)',
+  mainText: '#fff',
+  expressionText: '#bbb',
+  accent: '#ffa07a',
+  buttonBg: 'rgba(60,60,60,0.95)',
+  accentText: '#222',
+};
 
-function Section({children, title}: SectionProps): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
-  return (
-    <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
-          {
-            color: isDarkMode ? Colors.white : Colors.black,
-          },
-        ]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
-          {
-            color: isDarkMode ? Colors.light : Colors.dark,
-          },
-        ]}>
-        {children}
-      </Text>
-    </View>
-  );
-}
+const App = () => {
+  const [inValue, setInValue] = useState('0');
+  const [expression, setExpression] = useState('');
+  const [isDark, setIsDark] = useState(true);
 
-function App(): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
+  const theme = isDark ? darkTheme : lightTheme;
 
-  const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
+  const getSymbol = (operation: string) => {
+    switch (operation) {
+      case 'addition': return '+';
+      case 'subtract': return '-';
+      case 'multiple': return '*';
+      case 'division': return '/';
+      case 'percentage': return '/100';
+      default: return '';
+    }
   };
 
-  /*
-   * To keep the template simple and small we're adding padding to prevent view
-   * from rendering under the System UI.
-   * For bigger apps the recommendation is to use `react-native-safe-area-context`:
-   * https://github.com/AppAndFlow/react-native-safe-area-context
-   *
-   * You can read more about it here:
-   * https://github.com/react-native-community/discussions-and-proposals/discussions/827
-   */
-  const safePadding = '5%';
+  const evaluate = (expr: string) => {
+    try {
+      let result = eval(expr);
+      console.log(result,"from result");
+      return result.toString();
+    } catch {
+      return 'Error';
+    }
+  };
+
+  const onSubmit = (value: {operation: string; value: string}) => {
+    switch (value.operation) {
+      case 'clear':
+        setInValue('0');
+        setExpression('');
+        break;
+      case 'inverse':
+        if (inValue !== '0' && inValue !== 'Error') {
+          const newValue = (parseFloat(inValue) * -1).toString();
+          setInValue(newValue);
+          setExpression(newValue);
+        }
+        break;
+      case 'mode':
+        setIsDark(prev => !prev);
+        break;
+      case 'number':
+        if (inValue === '0' || inValue === 'Error') {
+          setInValue(value.value);
+          setExpression(value.value);
+        } else {
+          setInValue(prev => prev + value.value);
+          setExpression(prev => prev + value.value);
+        }
+        break;
+      case 'addition':
+      case 'subtract':
+      case 'multiple':
+      case 'division':
+        setInValue(prev => prev + value.value);
+        setExpression(prev => prev + getSymbol(value.operation));
+        break;
+      case 'percentage':
+        setInValue(prev => prev + '%');
+        setExpression(prev => prev + getSymbol(value.operation));
+        break;
+      case 'equals': {
+        let exp = expression;
+        if (/[0-9]$/.test(inValue)) exp = expression;
+        exp = exp.replace(/%/g, '/100');
+        const result = evaluate(exp);
+        setInValue(result);
+        setExpression(result);
+        break;
+      }
+      default:
+        break;
+    }
+  };
 
   return (
-    <View style={backgroundStyle}>
-      <StatusBar
-        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-        backgroundColor={backgroundStyle.backgroundColor}
-      />
-      <ScrollView
-        style={backgroundStyle}>
-        <View style={{paddingRight: safePadding}}>
-          <Header/>
+    <LinearGradient
+      colors={theme.gradient}
+      style={styles.gradient}
+    >
+      <SafeAreaView style={{flex: 1,marginTop: heightPercentageToDP(14)}}>
+        <View style={styles.container}>
+          <View style={[styles.displayCard, {backgroundColor: theme.displayBg, shadowColor: isDark ? '#000' : '#aaa'}]}>
+            {/* <Text style={[styles.expressionText, {color: theme.expressionText}]} numberOfLines={1} ellipsizeMode="head">
+              {expression || ' '}
+            </Text> */}
+            <Text style={[styles.mainText, {color: theme.mainText}]} numberOfLines={1} ellipsizeMode="head">
+              {inValue}
+            </Text>
+          </View>
+          <FlatList
+            data={CalculatorValues}
+            columnWrapperStyle={{gap: widthPercentageToDP(3)}}
+            contentContainerStyle={{rowGap: heightPercentageToDP(1)}}
+            style={styles.flatList}
+            renderItem={({item}) => (
+              <ButtonText
+                text={item.value}
+                onClick={() => onSubmit(item)}
+                colorChange={item.colorChange ?? false}
+                theme={theme}
+              />
+            )}
+            numColumns={4}
+            key={isDark ? 'dark' : 'light'}
+          />
         </View>
-        <View
-          style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
-            paddingHorizontal: safePadding,
-            paddingBottom: safePadding,
-          }}>
-          <Section title="Step One">
-            Edit <Text style={styles.highlight}>App.tsx</Text> to change this
-            screen and then come back to see your edits.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
-          <LearnMoreLinks />
-        </View>
-      </ScrollView>
-    </View>
+      </SafeAreaView>
+    </LinearGradient>
   );
-}
-
-const styles = StyleSheet.create({
-  sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
-  },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: '600',
-  },
-  sectionDescription: {
-    marginTop: 8,
-    fontSize: 18,
-    fontWeight: '400',
-  },
-  highlight: {
-    fontWeight: '700',
-  },
-});
+};
 
 export default App;
+
+const styles = StyleSheet.create({
+  gradient: {
+    flex: 1,
+  },
+  container: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    paddingBottom: heightPercentageToDP(2),
+  },
+  displayCard: {
+    width: widthPercentageToDP(90),
+    minHeight: heightPercentageToDP(18),
+    borderRadius: 24,
+    marginBottom: heightPercentageToDP(2),
+    padding: widthPercentageToDP(5),
+    shadowOffset: {width: 0, height: 6},
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 8,
+    justifyContent: 'flex-end',
+    alignItems: 'flex-end',
+  },
+  mainText: {
+    fontSize: heightPercentageToDP(6),
+    fontWeight: 'bold',
+    marginTop: heightPercentageToDP(1),
+    textAlign: 'right',
+  },
+  expressionText: {
+    fontSize: heightPercentageToDP(2.5),
+    textAlign: 'right',
+    marginBottom: heightPercentageToDP(0.5),
+  },
+  flatList: {
+    flex: 2,
+    width: widthPercentageToDP(100),
+    paddingLeft: widthPercentageToDP(1),
+  },
+});
